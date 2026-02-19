@@ -11,7 +11,7 @@
 
 **Module composition pattern:** `WalletCore` (abstract base) defines shared methods. `_BrowserWallet` / `_ServerWallet` extend it. Factory functions (`createWallet`, `ServerWallet.create`) instantiate the class then `Object.assign()` mixin methods from each module. The composed type is a union: `_BrowserWallet & TokenMethods & InscriptionMethods & MessageBoxMethods & CertificationMethods & OverlayMethods & DIDMethods & CredentialMethods`.
 
-**Build:** `cd simplifier-v2 && npm run build` (runs `tsc`)
+**Build:** `cd simple && npm run build` (runs `tsc`)
 
 **Dependencies:**
 - `@bsv/sdk` ^1.10.1 — Core BSV blockchain SDK

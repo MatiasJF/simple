@@ -54,7 +54,7 @@ The [Model Context Protocol](https://modelcontextprotocol.io) is an open standar
 
 ```bash
 # Build
-docker build -t simplifier-mcp simplifier-v2-mcp/
+docker build -t simplifier-mcp simple-mcp/
 
 # Run (stdio transport)
 docker run -i --rm simplifier-mcp
@@ -63,7 +63,7 @@ docker run -i --rm simplifier-mcp
 ### Without Docker
 
 ```bash
-cd simplifier-v2-mcp
+cd simple-mcp
 npm install
 npm run build
 npm start
@@ -92,7 +92,7 @@ Or for local development:
   "mcpServers": {
     "simplifier": {
       "command": "node",
-      "args": ["/path/to/simplifier-v2-mcp/dist/index.js"]
+      "args": ["/path/to/simple-mcp/dist/index.js"]
     }
   }
 }
