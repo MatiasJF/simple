@@ -1,0 +1,752 @@
+# @bsv/simplifier v2 — AI Knowledge Base
+
+## 1. Library Architecture
+
+**Package:** `@bsv/simplifier` v0.2.0
+
+**Entry points:**
+- `@bsv/simplifier` — All exports (browser + server)
+- `@bsv/simplifier/browser` — Browser-only: `createWallet()`, `Wallet`, `Overlay`, `Certifier`, `DID`, `CredentialSchema`, `CredentialIssuer`, `MemoryRevocationStore`
+- `@bsv/simplifier/server` — Server-only: `ServerWallet`, `FileRevocationStore` (plus all browser exports)
+
+**Module composition pattern:** `WalletCore` (abstract base) defines shared methods. `_BrowserWallet` / `_ServerWallet` extend it. Factory functions (`createWallet`, `ServerWallet.create`) instantiate the class then `Object.assign()` mixin methods from each module. The composed type is a union: `_BrowserWallet & TokenMethods & InscriptionMethods & MessageBoxMethods & CertificationMethods & OverlayMethods & DIDMethods & CredentialMethods`.
+
+**Build:** `cd simplifier-v2 && npm run build` (runs `tsc`)
+
+**Dependencies:**
+- `@bsv/sdk` ^1.10.1 — Core BSV blockchain SDK
+- `@bsv/wallet-toolbox` ^1.8.2 — Backend wallet (Node.js only, used by ServerWallet)
+- `@bsv/message-box-client` ^1.4.5 — PeerPayClient for P2P messaging
+- `dotenv` ^16.4.7 — Environment variable loading
+
+**Source layout:**
+```
+src/
+├── core/
+│   ├── WalletCore.ts    — Abstract base: wallet info, key derivation, pay, send, fundServerWallet, reinternalizeChange
+│   ├── types.ts         — All shared TypeScript interfaces
+│   ├── errors.ts        — Error classes: SimplifierError, WalletError, TransactionError, MessageBoxError, CertificationError, DIDError, CredentialError
+│   └── defaults.ts      — DEFAULT_CONFIG, mergeDefaults()
+├── modules/
+│   ├── tokens.ts        — createTokenMethods(): createToken, listTokenDetails, sendToken, redeemToken, sendTokenViaMessageBox, listIncomingTokens, acceptIncomingToken
+│   ├── inscriptions.ts  — createInscriptionMethods(): inscribeText, inscribeJSON, inscribeFileHash, inscribeImageHash
+│   ├── messagebox.ts    — createMessageBoxMethods(): certifyForMessageBox, getMessageBoxHandle, revokeMessageBoxCertification, sendMessageBoxPayment, listIncomingPayments, acceptIncomingPayment, registerIdentityTag, lookupIdentityByTag, listMyTags, revokeIdentityTag
+│   ├── certification.ts — Certifier class + createCertificationMethods(): acquireCertificateFrom, listCertificatesFrom, relinquishCert
+│   ├── overlay.ts       — Overlay class + createOverlayMethods(): advertiseSHIP, advertiseSLAP, broadcastAction, withRetry
+│   ├── did.ts           — DID class + createDIDMethods(): getDID, resolveDID, registerDID
+│   ├── credentials.ts   — CredentialSchema, CredentialIssuer, MemoryRevocationStore, toVerifiableCredential, toVerifiablePresentation + createCredentialMethods(): acquireCredential, listCredentials, createPresentation
+│   └── file-revocation-store.ts — FileRevocationStore (Node.js only, uses fs)
+├── browser.ts           — BrowserWallet type + createWallet() factory + re-exports
+├── server.ts            — ServerWallet type + ServerWallet.create() factory
+└── index.ts             — All exports
+```
+
+---
+
+## 2. Critical Gotchas
+
+1. **`basket insertion` vs `wallet payment` are MUTUALLY EXCLUSIVE** in `internalizeAction`. You cannot use both on the same output. `wallet payment` provides derivation info for spending (output NOT in any app basket). `basket insertion` puts output in a named basket (derivation info goes in `customInstructions`).
+
+2. **PeerPayClient.acceptPayment() swallows errors** — Returns the string `'Unable to receive payment!'` instead of throwing. Always check: `if (typeof result === 'string') throw new Error(result)`.
+
+3. **Change outputs from `createAction` are NOT in any app basket** — They need explicit reinternalization via `internalizeAction` with `basket insertion` protocol. Use `wallet.reinternalizeChange()` or pass `changeBasket` option to `pay()`/`send()`.
+
+4. **`result.tx` from `createAction` may be `undefined`** — Always check before using for reinternalization or overlay broadcasting.
+
+5. **BRC-29 Payment Derivation Protocol ID:** `[2, '3241645161d8']`
+
+6. **FileRevocationStore is server-only** — It's in a separate file (`file-revocation-store.ts`) to avoid bundling Node.js `fs` in browser builds. Import from `@bsv/simplifier/server` or `@bsv/simplifier`.
+
+7. **Overlay topics must start with `tm_`**, lookup services must start with `ls_`** — The Overlay class enforces these prefixes and throws if violated.
+
+8. **reinternalizeChange skips the largest change output** — The wallet automatically tracks one change output. The method only reinternalizes additional (orphaned) change outputs.
+
+9. **Token send/redeem uses signableTransaction flow** — These operations require a two-step `createAction` → `signAction` pattern with PushDrop unlock templates.
+
+10. **PeerPayClient instance is lazily created and reused** — The messagebox module creates one `PeerPayClient` per wallet instance and reuses it across calls.
+
+---
+
+## 3. Browser Wallet API
+
+### Initialization
+
+```typescript
+import { createWallet } from '@bsv/simplifier/browser'
+
+const wallet = await createWallet()
+// Optional: pass defaults
+const wallet = await createWallet({ changeBasket: 'my-change', network: 'main' })
+```
+
+### Wallet Info (WalletCore)
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getIdentityKey()` | `string` | Compressed public key hex (66 chars) |
+| `getAddress()` | `string` | P2PKH address derived from identity key |
+| `getStatus()` | `WalletStatus` | `{ isConnected, identityKey, network }` |
+| `getWalletInfo()` | `WalletInfo` | `{ identityKey, address, network, isConnected }` |
+| `getClient()` | `WalletInterface` | Underlying SDK wallet client |
+
+### Key Derivation (WalletCore)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `derivePublicKey(protocolID, keyID, counterparty?, forSelf?)` | `[SecurityLevel, string], string, string?, boolean?` | `Promise<string>` | Derive public key for any protocol |
+| `derivePaymentKey(counterparty, invoiceNumber?)` | `string, string?` | `Promise<string>` | Derive BRC-29 payment key |
+
+### Payments (WalletCore)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `pay(options)` | `PaymentOptions` | `Promise<TransactionResult>` | P2PKH payment with optional memo, derivation, change recovery |
+| `send(options)` | `SendOptions` | `Promise<SendResult>` | Multi-output: P2PKH + OP_RETURN + PushDrop in one tx |
+| `fundServerWallet(request, basket?, changeBasket?)` | `PaymentRequest, string?, string?` | `Promise<TransactionResult>` | Fund a ServerWallet using BRC-29 derivation |
+| `reinternalizeChange(tx, basket, skipOutputIndexes?)` | `number[], string, number[]?` | `Promise<ReinternalizeResult>` | Recover orphaned change outputs into a basket |
+
+### Tokens (tokens module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `createToken(options)` | `TokenOptions` | `Promise<TokenResult>` | Create encrypted PushDrop token |
+| `listTokenDetails(basket?)` | `string?` | `Promise<TokenDetail[]>` | List + decrypt tokens in a basket |
+| `sendToken(options)` | `SendTokenOptions` | `Promise<TransactionResult>` | Transfer token to another key (on-chain) |
+| `redeemToken(options)` | `RedeemTokenOptions` | `Promise<TransactionResult>` | Spend/destroy a token |
+| `sendTokenViaMessageBox(options)` | `SendTokenOptions` | `Promise<TransactionResult>` | Transfer token via MessageBox P2P |
+| `listIncomingTokens()` | — | `Promise<any[]>` | List tokens waiting in MessageBox inbox |
+| `acceptIncomingToken(token, basket?)` | `any, string?` | `Promise<any>` | Accept incoming token into a basket |
+
+### Inscriptions (inscriptions module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `inscribeText(text, opts?)` | `string, { basket?, description? }?` | `Promise<InscriptionResult>` | OP_RETURN text inscription |
+| `inscribeJSON(data, opts?)` | `object, { basket?, description? }?` | `Promise<InscriptionResult>` | OP_RETURN JSON inscription |
+| `inscribeFileHash(hash, opts?)` | `string, { basket?, description? }?` | `Promise<InscriptionResult>` | OP_RETURN SHA-256 file hash |
+| `inscribeImageHash(hash, opts?)` | `string, { basket?, description? }?` | `Promise<InscriptionResult>` | OP_RETURN SHA-256 image hash |
+
+### MessageBox (messagebox module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `certifyForMessageBox(handle, registryUrl?, host?)` | `string, string?, string?` | `Promise<{ txid, handle }>` | Register handle + anoint MessageBox host |
+| `getMessageBoxHandle(registryUrl?)` | `string?` | `Promise<string \| null>` | Check if wallet has a registered handle |
+| `revokeMessageBoxCertification(registryUrl?)` | `string?` | `Promise<void>` | Remove all registered handles |
+| `sendMessageBoxPayment(to, satoshis, changeBasket?)` | `string, number, string?` | `Promise<any>` | Send payment via MessageBox P2P |
+| `listIncomingPayments()` | — | `Promise<any[]>` | List payments in MessageBox inbox |
+| `acceptIncomingPayment(payment, basket?)` | `any, string?` | `Promise<any>` | Accept payment (into basket or via PeerPay) |
+| `registerIdentityTag(tag, registryUrl?)` | `string, string?` | `Promise<{ tag }>` | Register an identity tag |
+| `lookupIdentityByTag(query, registryUrl?)` | `string, string?` | `Promise<{ tag, identityKey }[]>` | Search identity registry |
+| `listMyTags(registryUrl?)` | `string?` | `Promise<{ tag, createdAt }[]>` | List own registered tags |
+| `revokeIdentityTag(tag, registryUrl?)` | `string, string?` | `Promise<void>` | Remove a registered tag |
+
+### Certification (certification module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `acquireCertificateFrom(config)` | `{ serverUrl, replaceExisting? }` | `Promise<CertificateData>` | Acquire certificate from remote server |
+| `listCertificatesFrom(config)` | `{ certifiers, types, limit? }` | `Promise<{ totalCertificates, certificates }>` | List certificates by certifier/type |
+| `relinquishCert(args)` | `{ type, serialNumber, certifier }` | `Promise<void>` | Revoke/relinquish a certificate |
+
+### DID (did module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `getDID()` | — | `DIDDocument` | Get this wallet's DID Document |
+| `resolveDID(didString)` | `string` | `DIDDocument` | Resolve any `did:bsv:` to its DID Document |
+| `registerDID(options?)` | `{ persist? }?` | `Promise<DIDDocument>` | Persist DID as a BSV certificate |
+
+### Credentials (credentials module)
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `acquireCredential(config)` | `{ serverUrl, schemaId?, fields?, replaceExisting? }` | `Promise<VerifiableCredential>` | Acquire VC from remote issuer |
+| `listCredentials(config)` | `{ certifiers, types, limit? }` | `Promise<VerifiableCredential[]>` | List wallet certs as W3C VCs |
+| `createPresentation(credentials)` | `VerifiableCredential[]` | `VerifiablePresentation` | Wrap VCs into a VP |
+
+---
+
+## 4. Server Wallet API
+
+### Initialization
+
+```typescript
+// In a Next.js API route (server-only):
+const { ServerWallet } = await import('@bsv/simplifier/server')
+
+const wallet = await ServerWallet.create({
+  privateKey: 'hex_private_key',
+  network: 'main',                          // optional, default 'main'
+  storageUrl: 'https://storage.babbage.systems'  // optional
+})
+```
+
+### ServerWallet-specific Methods
+
+| Method | Params | Returns | Description |
+|--------|--------|---------|-------------|
+| `createPaymentRequest(options)` | `{ satoshis, memo? }` | `PaymentRequest` | Generate BRC-29 payment request for desktop client |
+| `receivePayment(payment)` | `IncomingPayment` | `Promise<void>` | Internalize payment from desktop using `wallet payment` protocol |
+
+### Shared Methods
+
+ServerWallet has all the same methods as BrowserWallet (pay, send, createToken, inscribeText, etc.) via the same module composition pattern.
+
+---
+
+## 5. Standalone Classes
+
+### DID
+
+```typescript
+import { DID } from '@bsv/simplifier/browser'
+
+DID.fromIdentityKey('02abc...')   // → DIDDocument
+DID.parse('did:bsv:02abc...')     // → { method: 'bsv', identityKey: '02abc...' }
+DID.isValid('did:bsv:02abc...')   // → boolean
+DID.getCertificateType()          // → base64 string for 'did:bsv'
+```
+
+### Certifier
+
+```typescript
+import { Certifier } from '@bsv/simplifier/browser'
+
+const certifier = await Certifier.create()                     // random key
+const certifier = await Certifier.create({ privateKey: 'hex' }) // specific key
+const certifier = await Certifier.create({
+  privateKey: 'hex',
+  certificateType: 'base64type',
+  defaultFields: { role: 'admin' },
+  includeTimestamp: true  // default: true
+})
+
+certifier.getInfo()           // → { publicKey, certificateType }
+await certifier.certify(wallet, { extra: 'field' })  // → CertificateData (also acquires into wallet)
+```
+
+### CredentialSchema
+
+```typescript
+import { CredentialSchema } from '@bsv/simplifier/browser'
+
+const schema = new CredentialSchema({
+  id: 'my-schema',
+  name: 'My Credential',
+  description: 'Optional description',
+  fields: [
+    { key: 'name', label: 'Full Name', type: 'text', required: true },
+    { key: 'email', label: 'Email', type: 'email', required: true },
+    { key: 'role', label: 'Role', type: 'select', options: [{ value: 'admin', label: 'Admin' }] }
+  ],
+  validate: (values) => values.name.length < 2 ? 'Name too short' : null,
+  computedFields: (values) => ({ verified: 'true', timestamp: Date.now().toString() })
+})
+
+schema.validate({ name: 'A', email: 'test@test.com' })  // → 'Name too short'
+schema.computeFields({ name: 'Alice' })                   // → { name: 'Alice', verified: 'true', ... }
+schema.getInfo()  // → { id, name, description, certificateTypeBase64, fieldCount }
+```
+
+### CredentialIssuer
+
+```typescript
+import { CredentialIssuer } from '@bsv/simplifier/browser'
+
+const issuer = await CredentialIssuer.create({
+  privateKey: 'hex_key',
+  schemas: [schemaConfig],            // CredentialSchemaConfig[]
+  revocation: {
+    enabled: true,
+    wallet: serverWalletInstance,      // WalletInterface for creating revocation UTXOs
+    store: new MemoryRevocationStore() // or FileRevocationStore for server
+  }
+})
+
+const vc = await issuer.issue(subjectIdentityKey, 'schema-id', { name: 'Alice' })
+const result = await issuer.verify(vc)       // → { valid, revoked, errors, issuer, subject, type }
+await issuer.revoke(serialNumber)            // → { txid }
+await issuer.isRevoked(serialNumber)         // → boolean
+issuer.getInfo()                             // → { publicKey, did, schemas: [{ id, name }] }
+```
+
+### MemoryRevocationStore / FileRevocationStore
+
+```typescript
+import { MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { FileRevocationStore } from '@bsv/simplifier/server'
+
+// Memory (browser/tests)
+const store = new MemoryRevocationStore()
+
+// File (server — writes .revocation-secrets.json)
+const store = new FileRevocationStore()                       // default path
+const store = new FileRevocationStore('/path/to/secrets.json') // custom path
+
+// Both implement RevocationStore interface:
+await store.save(serialNumber, { secret, outpoint, beef })
+await store.load(serialNumber)  // → RevocationRecord | undefined
+await store.delete(serialNumber)
+await store.has(serialNumber)   // → boolean
+await store.findByOutpoint(outpoint)  // → boolean
+```
+
+### Overlay
+
+```typescript
+import { Overlay } from '@bsv/simplifier/browser'
+
+const overlay = await Overlay.create({
+  topics: ['tm_my_topic'],
+  network: 'mainnet',                    // 'mainnet' | 'testnet' | 'local'
+  slapTrackers: ['https://...'],         // optional
+  hostOverrides: { tm_topic: ['url'] },  // optional
+  additionalHosts: { tm_topic: ['url'] } // optional
+})
+
+overlay.getInfo()                         // → { topics, network }
+overlay.addTopic('tm_new')               // add topic (must start with tm_)
+overlay.removeTopic('tm_old')            // remove topic
+await overlay.broadcast(transaction)      // → OverlayBroadcastResult
+await overlay.broadcast(tx, ['tm_specific'])  // broadcast to specific topics
+await overlay.query('ls_service', queryData)  // → LookupAnswer
+await overlay.lookupOutputs('ls_service', q)  // → OverlayOutput[]
+overlay.getBroadcaster()                  // raw TopicBroadcaster
+overlay.getResolver()                     // raw LookupResolver
+```
+
+### W3C VC/VP Utilities
+
+```typescript
+import { toVerifiableCredential, toVerifiablePresentation } from '@bsv/simplifier/browser'
+
+const vc = toVerifiableCredential(certData, issuerPublicKey, { credentialType: 'MyCredential' })
+const vp = toVerifiablePresentation([vc1, vc2], holderPublicKey)
+```
+
+---
+
+## 6. Next.js Integration Guide
+
+### Import Patterns
+
+```typescript
+// Browser components (client-side):
+'use client'
+import { createWallet, Certifier, DID, Overlay } from '@bsv/simplifier/browser'
+import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simplifier/browser'
+
+// Server API routes:
+const { ServerWallet } = await import('@bsv/simplifier/server')
+const { FileRevocationStore } = await import('@bsv/simplifier/server')
+```
+
+### next.config.ts (CRITICAL for Turbopack)
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "@bsv/wallet-toolbox",
+    "knex",
+    "better-sqlite3",
+    "tedious",
+    "mysql",
+    "mysql2",
+    "pg",
+    "pg-query-stream",
+    "oracledb",
+    "dotenv"
+  ]
+};
+
+export default nextConfig;
+```
+
+Without `serverExternalPackages`, Turbopack will try to bundle `@bsv/wallet-toolbox` and its database drivers for the browser, causing build failures.
+
+### Browser Wallet Setup
+
+```typescript
+'use client'
+import { useState, useEffect } from 'react'
+import { createWallet, type BrowserWallet } from '@bsv/simplifier/browser'
+
+export default function Page() {
+  const [wallet, setWallet] = useState<BrowserWallet | null>(null)
+
+  const connect = async () => {
+    const w = await createWallet()
+    setWallet(w)
+  }
+
+  return <button onClick={connect}>Connect</button>
+}
+```
+
+### Server Wallet in API Route
+
+```typescript
+// app/api/server-wallet/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+
+let serverWallet: any = null
+let initPromise: Promise<any> | null = null
+
+async function getServerWallet() {
+  if (serverWallet) return serverWallet
+  if (initPromise) return initPromise
+
+  initPromise = (async () => {
+    const { ServerWallet } = await import('@bsv/simplifier/server')
+    const privateKey = process.env.SERVER_PRIVATE_KEY || 'generated_hex'
+
+    serverWallet = await ServerWallet.create({
+      privateKey,
+      network: 'main',
+      storageUrl: 'https://storage.babbage.systems'
+    })
+    return serverWallet
+  })()
+
+  return initPromise
+}
+
+export async function GET(req: NextRequest) {
+  const wallet = await getServerWallet()
+  return NextResponse.json({ identityKey: wallet.getIdentityKey() })
+}
+```
+
+### Key Persistence Pattern
+
+Server wallet private keys should persist across restarts. Pattern:
+1. Check `process.env.SERVER_PRIVATE_KEY`
+2. If not set, check `.server-wallet.json` file
+3. If not found, generate `PrivateKey.fromRandom().toHex()` and save to file
+
+---
+
+## 7. Code Recipes
+
+### 7.1 Connect Wallet + Auto-check MessageBox Handle
+
+```typescript
+const wallet = await createWallet()
+const handle = await wallet.getMessageBoxHandle('/api/identity-registry')
+if (handle) {
+  console.log('MessageBox handle:', handle)
+} else {
+  await wallet.certifyForMessageBox('@alice', '/api/identity-registry')
+}
+```
+
+### 7.2 Simple Payment with Change Recovery
+
+```typescript
+const result = await wallet.pay({
+  to: recipientKey,
+  satoshis: 1000,
+  memo: 'Coffee payment',
+  basket: 'payments',
+  changeBasket: 'change'
+})
+console.log('TXID:', result.txid)
+console.log('Change recovered:', result.reinternalized?.count)
+```
+
+### 7.3 Multi-Output Send (P2PKH + OP_RETURN + PushDrop)
+
+```typescript
+const result = await wallet.send({
+  outputs: [
+    { to: recipientKey, satoshis: 1000, basket: 'payments' },                   // P2PKH
+    { data: ['Hello blockchain!'], basket: 'text' },                             // OP_RETURN
+    { to: wallet.getIdentityKey(), data: [{ value: 42 }], satoshis: 1, basket: 'tokens' }  // PushDrop
+  ],
+  description: 'Multi-output transaction',
+  changeBasket: 'change'
+})
+// result.outputDetails: [{ index: 0, type: 'p2pkh' }, { index: 1, type: 'op_return' }, { index: 2, type: 'pushdrop' }]
+```
+
+### 7.4 Create / List / Send / Redeem Tokens
+
+```typescript
+// Create
+const token = await wallet.createToken({
+  data: { type: 'loyalty', points: 100 },
+  basket: 'my-tokens',
+  satoshis: 1
+})
+
+// List with decryption
+const tokens = await wallet.listTokenDetails('my-tokens')
+// [{ outpoint, satoshis, data: { type: 'loyalty', points: 100 }, protocolID, keyID, counterparty }]
+
+// Send to another key
+await wallet.sendToken({ basket: 'my-tokens', outpoint: tokens[0].outpoint, to: recipientKey })
+
+// Redeem (destroy)
+await wallet.redeemToken({ basket: 'my-tokens', outpoint: tokens[0].outpoint })
+```
+
+### 7.5 Token Transfer via MessageBox
+
+```typescript
+// Sender
+await wallet.sendTokenViaMessageBox({ basket: 'my-tokens', outpoint: '...', to: recipientKey })
+
+// Recipient
+const incoming = await wallet.listIncomingTokens()
+await wallet.acceptIncomingToken(incoming[0], 'received-tokens')
+```
+
+### 7.6 Text / JSON Inscriptions
+
+```typescript
+const text = await wallet.inscribeText('Hello blockchain!')
+// { txid, type: 'text', dataSize: 17, basket: 'text' }
+
+const json = await wallet.inscribeJSON({ title: 'Document', created: Date.now() })
+// { txid, type: 'json', dataSize: ..., basket: 'json' }
+
+const fileHash = await wallet.inscribeFileHash('a'.repeat(64))
+// { txid, type: 'file-hash', dataSize: 64, basket: 'hash-document' }
+```
+
+### 7.7 MessageBox: Certify, Send, Receive Payments
+
+```typescript
+// Certify identity
+await wallet.certifyForMessageBox('@alice', '/api/identity-registry')
+
+// Search for someone
+const results = await wallet.lookupIdentityByTag('bob', '/api/identity-registry')
+
+// Send payment
+await wallet.sendMessageBoxPayment(results[0].identityKey, 1000, 'change')
+
+// Receive payments
+const incoming = await wallet.listIncomingPayments()
+await wallet.acceptIncomingPayment(incoming[0], 'received-payments')
+```
+
+### 7.8 Server Wallet: Create, Fund, Receive, Balance
+
+```typescript
+// Server side: create wallet
+const { ServerWallet } = await import('@bsv/simplifier/server')
+const server = await ServerWallet.create({ privateKey: 'hex', network: 'main' })
+
+// Server: generate payment request
+const request = server.createPaymentRequest({ satoshis: 50000 })
+
+// Client: fund server wallet
+const result = await wallet.fundServerWallet(request, 'server-funding', 'change')
+
+// Client: send tx to server
+await fetch('/api/server-wallet?action=receive', {
+  method: 'POST',
+  body: JSON.stringify({
+    tx: Array.from(result.tx),
+    senderIdentityKey: wallet.getIdentityKey(),
+    derivationPrefix: request.derivationPrefix,
+    derivationSuffix: request.derivationSuffix,
+    outputIndex: 0
+  })
+})
+
+// Server: receive payment
+await server.receivePayment({ tx, senderIdentityKey, derivationPrefix, derivationSuffix, outputIndex: 0 })
+```
+
+### 7.9 DID: Get, Register, Resolve
+
+```typescript
+import { DID } from '@bsv/simplifier/browser'
+
+// Get DID document for this wallet
+const didDoc = wallet.getDID()
+// { '@context': [...], id: 'did:bsv:02abc...', controller: '...', verificationMethod: [...] }
+
+// Register DID (persists as BSV certificate)
+await wallet.registerDID()
+
+// Resolve any DID
+const doc = wallet.resolveDID('did:bsv:02abc...')
+
+// Static utility
+DID.isValid('did:bsv:02abc...')  // true
+DID.parse('did:bsv:02abc...')    // { method: 'bsv', identityKey: '02abc...' }
+```
+
+### 7.10 Credentials: Issue VC, List VCs, Create Presentation
+
+```typescript
+import { CredentialIssuer, CredentialSchema, MemoryRevocationStore } from '@bsv/simplifier/browser'
+
+// Define schema
+const schema = new CredentialSchema({
+  id: 'age-verification',
+  name: 'AgeVerification',
+  fields: [
+    { key: 'name', label: 'Name', type: 'text', required: true },
+    { key: 'over18', label: 'Over 18', type: 'checkbox', required: true }
+  ]
+})
+
+// Create issuer
+const issuer = await CredentialIssuer.create({
+  privateKey: 'hex_key',
+  schemas: [schema.getConfig()],
+  revocation: { enabled: false }
+})
+
+// Issue
+const vc = await issuer.issue(subjectKey, 'age-verification', { name: 'Alice', over18: 'true' })
+
+// List from wallet
+const vcs = await wallet.listCredentials({
+  certifiers: [issuer.getInfo().publicKey],
+  types: [schema.getInfo().certificateTypeBase64]
+})
+
+// Create presentation
+const vp = wallet.createPresentation(vcs)
+```
+
+### 7.11 Overlay: Create, Query, Advertise SHIP/SLAP
+
+```typescript
+import { Overlay } from '@bsv/simplifier/browser'
+
+const overlay = await Overlay.create({ topics: ['tm_payments'], network: 'mainnet' })
+
+// Advertise hosting
+await wallet.advertiseSHIP('https://myserver.com', 'tm_payments', 'ship-tokens')
+await wallet.advertiseSLAP('https://myserver.com', 'ls_payments', 'slap-tokens')
+
+// Broadcast + query
+const { txid, broadcast } = await wallet.broadcastAction(overlay, {
+  outputs: [{ lockingScript: '...', satoshis: 1, outputDescription: 'Overlay output' }],
+  description: 'Overlay broadcast'
+}, ['tm_payments'])
+
+const results = await overlay.lookupOutputs('ls_payments', { tag: 'recent' })
+```
+
+---
+
+## 8. Type Reference
+
+### Core Types
+
+```typescript
+type Network = 'main' | 'testnet'
+
+interface WalletDefaults {
+  network: Network; description: string; outputDescription: string
+  changeBasket?: string; tokenBasket: string
+  tokenProtocolID: [SecurityLevel, string]; tokenKeyID: string
+  messageBoxHost: string; registryUrl?: string
+}
+
+interface PaymentOptions {
+  to: string; satoshis: number; memo?: string; description?: string
+  basket?: string; changeBasket?: string
+  derivationPrefix?: string; derivationSuffix?: string
+}
+
+interface SendOptions { outputs: SendOutputSpec[]; description?: string; changeBasket?: string }
+
+interface SendOutputSpec {
+  to?: string; satoshis?: number; data?: (string | object | number[])[]
+  description?: string; basket?: string; protocolID?: [number, string]; keyID?: string
+}
+// Rules: to only → P2PKH | data only → OP_RETURN | to + data → PushDrop
+
+interface TransactionResult { txid: string; tx: any; outputs?: OutputInfo[]; reinternalized?: ReinternalizeResult }
+interface SendResult extends TransactionResult { outputDetails: SendOutputDetail[] }
+interface ReinternalizeResult { count: number; errors: string[] }
+```
+
+### Token Types
+
+```typescript
+interface TokenOptions { to?: string; data: any; basket?: string; protocolID?: [number, string]; keyID?: string; satoshis?: number }
+interface TokenResult extends TransactionResult { basket: string; encrypted: boolean }
+interface TokenDetail { outpoint: string; satoshis: number; data: any; protocolID: any; keyID: string; counterparty: string }
+interface SendTokenOptions { basket: string; outpoint: string; to: string }
+interface RedeemTokenOptions { basket: string; outpoint: string }
+```
+
+### Inscription Types
+
+```typescript
+type InscriptionType = 'text' | 'json' | 'file-hash' | 'image-hash'
+interface InscriptionResult extends TransactionResult { type: InscriptionType; dataSize: number; basket: string }
+```
+
+### Server Wallet Types
+
+```typescript
+interface ServerWalletConfig { privateKey: string; network?: Network; storageUrl?: string }
+interface PaymentRequest { serverIdentityKey: string; derivationPrefix: string; derivationSuffix: string; satoshis: number; memo?: string }
+interface IncomingPayment { tx: number[] | Uint8Array; senderIdentityKey: string; derivationPrefix: string; derivationSuffix: string; outputIndex: number; description?: string }
+```
+
+### DID Types
+
+```typescript
+interface DIDDocument { '@context': string[]; id: string; controller: string; verificationMethod: DIDVerificationMethod[]; authentication: string[]; assertionMethod: string[] }
+interface DIDParseResult { method: string; identityKey: string }
+```
+
+### Credential Types
+
+```typescript
+interface CredentialSchemaConfig { id: string; name: string; description?: string; certificateTypeBase64?: string; fields: CredentialFieldSchema[]; validate?: (values) => string | null; computedFields?: (values) => Record<string, string> }
+interface CredentialIssuerConfig { privateKey: string; schemas?: CredentialSchemaConfig[]; revocation?: { enabled: boolean; wallet?: any; store?: RevocationStore } }
+interface VerifiableCredential { '@context': string[]; type: string[]; issuer: string; issuanceDate: string; credentialSubject: { id: string; [key: string]: any }; proof: { type: string; signatureValue: string; ... }; _bsv: { certificate: CertificateData } }
+interface VerifiablePresentation { '@context': string[]; type: string[]; holder: string; verifiableCredential: VerifiableCredential[]; proof: { ... } }
+interface RevocationStore { save(sn, record): Promise<void>; load(sn): Promise<RevocationRecord | undefined>; delete(sn): Promise<void>; has(sn): Promise<boolean>; findByOutpoint(op): Promise<boolean> }
+```
+
+### Overlay Types
+
+```typescript
+interface OverlayConfig { topics: string[]; network?: 'mainnet' | 'testnet' | 'local'; slapTrackers?: string[]; hostOverrides?: Record<string, string[]>; additionalHosts?: Record<string, string[]> }
+interface OverlayBroadcastResult { success: boolean; txid?: string; code?: string; description?: string }
+interface OverlayOutput { beef: number[]; outputIndex: number; context?: number[] }
+```
+
+### Error Classes
+
+```typescript
+SimplifierError          // base (code?: string)
+├── WalletError          // WALLET_ERROR
+├── TransactionError     // TRANSACTION_ERROR
+├── MessageBoxError      // MESSAGEBOX_ERROR
+├── CertificationError   // CERTIFICATION_ERROR
+├── DIDError             // DID_ERROR
+└── CredentialError      // CREDENTIAL_ERROR
+```
+
+### Default Configuration
+
+```typescript
+{
+  network: 'main',
+  description: 'BSV-Simplify transaction',
+  outputDescription: 'BSV-Simplify output',
+  changeBasket: undefined,
+  tokenBasket: 'tokens',
+  tokenProtocolID: [0, 'token'],
+  tokenKeyID: '1',
+  messageBoxHost: 'https://messagebox.babbage.systems',
+  registryUrl: undefined
+}
+```
