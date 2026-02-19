@@ -1,6 +1,6 @@
 # MessageBox & P2P
 
-MessageBox enables peer-to-peer communication between BSV wallets. Through `@bsv/simplifier`, you can register an identity handle, send and receive payments, and look up other users — all without a central server knowing who you are.
+MessageBox enables peer-to-peer communication between BSV wallets. Through `@bsv/simple`, you can register an identity handle, send and receive payments, and look up other users — all without a central server knowing who you are.
 
 ## Identity Registration
 

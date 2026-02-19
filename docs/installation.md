@@ -3,10 +3,10 @@
 ## NPM
 
 ```bash
-npm install @bsv/simplifier @bsv/sdk
+npm install @bsv/simple @bsv/sdk
 ```
 
-`@bsv/sdk` is a peer dependency — it must be installed alongside `@bsv/simplifier`.
+`@bsv/sdk` is a peer dependency — it must be installed alongside `@bsv/simple`.
 
 ## Entry Points
 
@@ -14,27 +14,27 @@ The library provides three entry points:
 
 | Import Path | Environment | Use Case |
 |-------------|-------------|----------|
-| `@bsv/simplifier/browser` | Browser | Connect to user's wallet extension |
-| `@bsv/simplifier/server` | Node.js | Server wallet with private key |
-| `@bsv/simplifier` | Both | All exports (use with care — includes server-only code) |
+| `@bsv/simple/browser` | Browser | Connect to user's wallet extension |
+| `@bsv/simple/server` | Node.js | Server wallet with private key |
+| `@bsv/simple` | Both | All exports (use with care — includes server-only code) |
 
 ### Browser
 
 ```typescript
-import { createWallet, Certifier, DID, Overlay } from '@bsv/simplifier/browser'
-import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { createWallet, Certifier, DID, Overlay } from '@bsv/simple/browser'
+import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simple/browser'
 ```
 
 ### Server (Node.js)
 
 ```typescript
-import { ServerWallet, FileRevocationStore } from '@bsv/simplifier/server'
+import { ServerWallet, FileRevocationStore } from '@bsv/simple/server'
 ```
 
 Or with dynamic import (recommended in frameworks like Next.js):
 
 ```typescript
-const { ServerWallet } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
 ```
 
 ## TypeScript
@@ -42,8 +42,8 @@ const { ServerWallet } = await import('@bsv/simplifier/server')
 The library ships with full TypeScript declarations. No additional `@types/` packages are needed.
 
 ```typescript
-import type { BrowserWallet } from '@bsv/simplifier/browser'
-import type { PaymentOptions, TokenOptions, SendOptions } from '@bsv/simplifier'
+import type { BrowserWallet } from '@bsv/simple/browser'
+import type { PaymentOptions, TokenOptions, SendOptions } from '@bsv/simple'
 ```
 
 ## Framework-Specific Setup
@@ -54,8 +54,8 @@ Next.js with Turbopack requires additional configuration to prevent server-only 
 
 ### React / Vite
 
-No special configuration needed. Import from `@bsv/simplifier/browser` in your components.
+No special configuration needed. Import from `@bsv/simple/browser` in your components.
 
 ### Vanilla TypeScript / Node.js
 
-No special configuration needed. Use `@bsv/simplifier/browser` for browser apps or `@bsv/simplifier/server` for Node.js scripts.
+No special configuration needed. Use `@bsv/simple/browser` for browser apps or `@bsv/simple/server` for Node.js scripts.

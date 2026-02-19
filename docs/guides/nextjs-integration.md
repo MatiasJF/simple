@@ -1,11 +1,11 @@
 # Next.js Integration
 
-This guide covers setting up `@bsv/simplifier` in a Next.js application with both browser wallet (client components) and server wallet (API routes).
+This guide covers setting up `@bsv/simple` in a Next.js application with both browser wallet (client components) and server wallet (API routes).
 
 ## 1. Install Dependencies
 
 ```bash
-npm install @bsv/simplifier @bsv/sdk
+npm install @bsv/simple @bsv/sdk
 ```
 
 ## 2. Configure next.config.ts
@@ -42,7 +42,7 @@ export default nextConfig;
 'use client'
 
 import { useState } from 'react'
-import { createWallet, type BrowserWallet } from '@bsv/simplifier/browser'
+import { createWallet, type BrowserWallet } from '@bsv/simple/browser'
 
 export default function Page() {
   const [wallet, setWallet] = useState<BrowserWallet | null>(null)
@@ -128,7 +128,7 @@ async function getServerWallet() {
   if (initPromise) return initPromise
 
   initPromise = (async () => {
-    const { ServerWallet } = await import('@bsv/simplifier/server')
+    const { ServerWallet } = await import('@bsv/simple/server')
     const { PrivateKey } = await import('@bsv/sdk')
 
     const savedKey = loadSavedKey()
@@ -159,7 +159,7 @@ async function getServerWallet() {
 
 ### Key Points
 
-- **Dynamic imports**: Always use `await import('@bsv/simplifier/server')` instead of static imports at the top of the file. Static imports cause bundler issues.
+- **Dynamic imports**: Always use `await import('@bsv/simple/server')` instead of static imports at the top of the file. Static imports cause bundler issues.
 - **Module-level caching**: Store the wallet instance and init promise at module scope so the wallet isn't re-initialized on every request.
 - **Error recovery**: If initialization fails, reset the promise so the next request can retry.
 
@@ -290,5 +290,5 @@ SERVER_PRIVATE_KEY=a1b2c3d4e5f6...
 |---------|----------|
 | Build fails with "Can't resolve 'fs'" | Add `serverExternalPackages` to `next.config.ts` |
 | Server wallet re-initializes every request | Cache at module scope with promise pattern |
-| Import error for `@bsv/simplifier/server` | Use dynamic `await import()` in API routes |
+| Import error for `@bsv/simple/server` | Use dynamic `await import()` in API routes |
 | Change outputs disappear | Pass `changeBasket` to payment methods |

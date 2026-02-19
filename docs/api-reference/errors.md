@@ -1,13 +1,13 @@
 # Errors
 
-`@bsv/simplifier` provides a hierarchy of error classes for domain-specific error handling. All errors extend the base `SimplifierError`.
+`@bsv/simple` provides a hierarchy of error classes for domain-specific error handling. All errors extend the base `SimpleError`.
 
 **Source:** `src/core/errors.ts`
 
 ## Error Hierarchy
 
 ```
-SimplifierError (base)
+SimpleError (base)
 ├── WalletError
 ├── TransactionError
 ├── MessageBoxError
@@ -16,12 +16,12 @@ SimplifierError (base)
 └── CredentialError
 ```
 
-## SimplifierError
+## SimpleError
 
 Base class for all library errors.
 
 ```typescript
-class SimplifierError extends Error {
+class SimpleError extends Error {
   code?: string
   constructor(message: string, code?: string)
 }
@@ -31,14 +31,14 @@ class SimplifierError extends Error {
 |----------|------|-------------|
 | `message` | `string` | Human-readable error description |
 | `code` | `string?` | Machine-readable error code |
-| `name` | `string` | `'SimplifierError'` |
+| `name` | `string` | `'SimpleError'` |
 
 ## WalletError
 
 Wallet initialization and connection errors.
 
 ```typescript
-class WalletError extends SimplifierError {
+class WalletError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -58,7 +58,7 @@ class WalletError extends SimplifierError {
 Transaction creation and signing errors.
 
 ```typescript
-class TransactionError extends SimplifierError {
+class TransactionError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -78,7 +78,7 @@ class TransactionError extends SimplifierError {
 MessageBox P2P messaging errors.
 
 ```typescript
-class MessageBoxError extends SimplifierError {
+class MessageBoxError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -98,7 +98,7 @@ class MessageBoxError extends SimplifierError {
 Certificate issuance and management errors.
 
 ```typescript
-class CertificationError extends SimplifierError {
+class CertificationError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -118,7 +118,7 @@ class CertificationError extends SimplifierError {
 DID parsing and registration errors.
 
 ```typescript
-class DIDError extends SimplifierError {
+class DIDError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -138,7 +138,7 @@ class DIDError extends SimplifierError {
 Verifiable Credential errors.
 
 ```typescript
-class CredentialError extends SimplifierError {
+class CredentialError extends SimpleError {
   constructor(message: string)
 }
 ```
@@ -158,14 +158,14 @@ class CredentialError extends SimplifierError {
 ## Catching Errors
 
 ```typescript
-import { SimplifierError, WalletError, CredentialError } from '@bsv/simplifier/browser'
+import { SimpleError, WalletError, CredentialError } from '@bsv/simple/browser'
 
 try {
   await wallet.pay({ to: key, satoshis: 1000 })
 } catch (error) {
   if (error instanceof WalletError) {
     console.error('Wallet issue:', error.message)
-  } else if (error instanceof SimplifierError) {
+  } else if (error instanceof SimpleError) {
     console.error(`${error.code}: ${error.message}`)
   } else {
     console.error('Unexpected:', error)

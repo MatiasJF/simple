@@ -27,7 +27,7 @@ Create a new overlay instance.
 **Throws:** `Error` if no topics provided or any topic doesn't start with `tm_`.
 
 ```typescript
-import { Overlay } from '@bsv/simplifier/browser'
+import { Overlay } from '@bsv/simple/browser'
 
 const overlay = await Overlay.create({
   topics: ['tm_payments', 'tm_tokens'],

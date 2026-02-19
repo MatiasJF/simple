@@ -1,6 +1,6 @@
 # Overlay Networks
 
-Overlay networks let you broadcast transactions to topic-specific services and query lookup services for data. `@bsv/simplifier` wraps the BSV SDK's `TopicBroadcaster` and `LookupResolver` into a clean API.
+Overlay networks let you broadcast transactions to topic-specific services and query lookup services for data. `@bsv/simple` wraps the BSV SDK's `TopicBroadcaster` and `LookupResolver` into a clean API.
 
 ## Core Concepts
 
@@ -16,7 +16,7 @@ Overlay networks let you broadcast transactions to topic-specific services and q
 ## Creating an Overlay
 
 ```typescript
-import { Overlay } from '@bsv/simplifier/browser'
+import { Overlay } from '@bsv/simple/browser'
 
 const overlay = await Overlay.create({
   topics: ['tm_payments', 'tm_tokens'],
@@ -152,7 +152,7 @@ const result = await wallet.withRetry(async () => {
 
 ## Advanced: Raw SDK Access
 
-For operations not covered by the simplifier API:
+For operations not covered by the simple API:
 
 ```typescript
 const broadcaster = overlay.getBroadcaster()  // TopicBroadcaster
@@ -162,7 +162,7 @@ const resolver = overlay.getResolver()        // LookupResolver
 ## Complete Example
 
 ```typescript
-import { createWallet, Overlay } from '@bsv/simplifier/browser'
+import { createWallet, Overlay } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 

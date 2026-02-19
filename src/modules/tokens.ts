@@ -18,7 +18,7 @@ import {
   TransactionResult
 } from '../core/types'
 
-const TOKEN_MESSAGE_BOX = 'simplifier_token_inbox'
+const TOKEN_MESSAGE_BOX = 'simple_token_inbox'
 
 export function createTokenMethods(core: WalletCore) {
   return {

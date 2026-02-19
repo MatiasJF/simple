@@ -1,6 +1,6 @@
 # Gotchas & Pitfalls
 
-Common mistakes and non-obvious behaviors when working with `@bsv/simplifier` and the BSV wallet ecosystem.
+Common mistakes and non-obvious behaviors when working with `@bsv/simple` and the BSV wallet ecosystem.
 
 ## 1. Basket Insertion vs Wallet Payment
 
@@ -36,7 +36,7 @@ const result = await peerPay.acceptPayment(payment)
 if (typeof result === 'string') throw new Error(result)
 ```
 
-`@bsv/simplifier` handles this check internally, but be aware if you ever use `@bsv/message-box-client` directly.
+`@bsv/simple` handles this check internally, but be aware if you ever use `@bsv/message-box-client` directly.
 
 ## 3. Change Outputs Are Orphaned by Default
 
@@ -96,10 +96,10 @@ await wallet.advertiseSLAP('domain.com', 'ls_payments')
 
 ```typescript
 // BROWSER — use MemoryRevocationStore
-import { MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { MemoryRevocationStore } from '@bsv/simple/browser'
 
 // SERVER — use FileRevocationStore
-const { FileRevocationStore } = await import('@bsv/simplifier/server')
+const { FileRevocationStore } = await import('@bsv/simple/server')
 ```
 
 ## 7. Static Imports Break Next.js API Routes
@@ -108,10 +108,10 @@ Using static imports for server-only code at the top of a Next.js API route can 
 
 ```typescript
 // WRONG — may cause bundler errors
-import { ServerWallet } from '@bsv/simplifier/server'
+import { ServerWallet } from '@bsv/simple/server'
 
 // CORRECT — dynamic import inside the handler
-const { ServerWallet } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
 ```
 
 ## 8. Server Wallet Re-initializes on Every Request

@@ -66,7 +66,7 @@ export type {
 
 // Errors
 export {
-  SimplifierError,
+  SimpleError,
   WalletError,
   TransactionError,
   MessageBoxError,

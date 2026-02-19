@@ -131,7 +131,7 @@ Transfer a token to another key via MessageBox P2P messaging.
 
 **Behavior:**
 1. Same two-step signing as `sendToken()`
-2. After signing, sends the transaction via `PeerPayClient.sendMessage()` to the `simplifier_token_inbox` message box
+2. After signing, sends the transaction via `PeerPayClient.sendMessage()` to the `simple_token_inbox` message box
 3. Message body contains: `{ transaction, protocolID, keyID, sender, outputIndex }`
 
 ## listIncomingTokens()

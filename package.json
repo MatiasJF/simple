@@ -1,5 +1,5 @@
 {
-  "name": "@bsv/simplifier",
+  "name": "@bsv/simple",
   "version": "0.2.0",
   "description": "Simplified, modular helper library for BSV blockchain development",
   "main": "dist/index.js",

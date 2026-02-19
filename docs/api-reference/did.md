@@ -9,7 +9,7 @@ The DID module provides W3C-compatible Decentralized Identifiers (`did:bsv:`) ba
 The `DID` class is a standalone utility — no wallet instance required.
 
 ```typescript
-import { DID } from '@bsv/simplifier/browser'
+import { DID } from '@bsv/simple/browser'
 ```
 
 ### DID.fromIdentityKey()

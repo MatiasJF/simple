@@ -1,6 +1,6 @@
 # MCP Server
 
-`@bsv/simplifier` ships with a companion **Model Context Protocol (MCP) server** that gives AI coding assistants (Claude Code, Cursor, Copilot, etc.) structured knowledge about the library and the ability to generate integration code.
+`@bsv/simple` ships with a companion **Model Context Protocol (MCP) server** that gives AI coding assistants (Claude Code, Cursor, Copilot, etc.) structured knowledge about the library and the ability to generate integration code.
 
 ## What is MCP?
 
@@ -14,17 +14,17 @@ The [Model Context Protocol](https://modelcontextprotocol.io) is an open standar
 
 | URI | Description |
 |-----|-------------|
-| `simplifier://api/wallet` | WalletCore, BrowserWallet, and ServerWallet method reference |
-| `simplifier://api/tokens` | Token create, list, send, redeem, and MessageBox transfer |
-| `simplifier://api/inscriptions` | Text, JSON, file-hash, and image-hash inscriptions |
-| `simplifier://api/messagebox` | MessageBox certification, payments, and identity registry |
-| `simplifier://api/certification` | Certifier class and certificate management |
-| `simplifier://api/did` | DID class and wallet DID methods |
-| `simplifier://api/credentials` | Schema, Issuer, Verifiable Credentials/Presentations |
-| `simplifier://api/overlay` | Overlay networks, SHIP/SLAP, broadcasting |
-| `simplifier://guide/nextjs` | Complete Next.js integration guide |
-| `simplifier://guide/gotchas` | Critical pitfalls and non-obvious behaviors |
-| `simplifier://patterns` | Common code patterns and recipes |
+| `simple://api/wallet` | WalletCore, BrowserWallet, and ServerWallet method reference |
+| `simple://api/tokens` | Token create, list, send, redeem, and MessageBox transfer |
+| `simple://api/inscriptions` | Text, JSON, file-hash, and image-hash inscriptions |
+| `simple://api/messagebox` | MessageBox certification, payments, and identity registry |
+| `simple://api/certification` | Certifier class and certificate management |
+| `simple://api/did` | DID class and wallet DID methods |
+| `simple://api/credentials` | Schema, Issuer, Verifiable Credentials/Presentations |
+| `simple://api/overlay` | Overlay networks, SHIP/SLAP, broadcasting |
+| `simple://guide/nextjs` | Complete Next.js integration guide |
+| `simple://guide/gotchas` | Critical pitfalls and non-obvious behaviors |
+| `simple://patterns` | Common code patterns and recipes |
 
 ## Available Tools
 
@@ -44,9 +44,9 @@ The [Model Context Protocol](https://modelcontextprotocol.io) is an open standar
 
 | Prompt | Description |
 |--------|-------------|
-| `integrate_simplifier` | Full walkthrough for adding `@bsv/simplifier` to a project |
+| `integrate_simple` | Full walkthrough for adding `@bsv/simple` to a project |
 | `add_bsv_feature` | Generate code for a specific feature (payments, tokens, etc.) |
-| `debug_simplifier` | Debugging help with common gotchas checklist |
+| `debug_simple` | Debugging help with common gotchas checklist |
 
 ## Running the MCP Server
 
@@ -54,10 +54,10 @@ The [Model Context Protocol](https://modelcontextprotocol.io) is an open standar
 
 ```bash
 # Build
-docker build -t simplifier-mcp simple-mcp/
+docker build -t simple-mcp simple-mcp/
 
 # Run (stdio transport)
-docker run -i --rm simplifier-mcp
+docker run -i --rm simple-mcp
 ```
 
 ### Without Docker
@@ -77,9 +77,9 @@ Add the MCP server to your Claude Code settings:
 // ~/.claude/settings.json
 {
   "mcpServers": {
-    "simplifier": {
+    "simple": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "simplifier-mcp"]
+      "args": ["run", "-i", "--rm", "simple-mcp"]
     }
   }
 }
@@ -90,7 +90,7 @@ Or for local development:
 ```json
 {
   "mcpServers": {
-    "simplifier": {
+    "simple": {
       "command": "node",
       "args": ["/path/to/simple-mcp/dist/index.js"]
     }
@@ -102,7 +102,7 @@ Or for local development:
 
 Once connected, you can ask your AI assistant things like:
 
-- "Set up @bsv/simplifier in my Next.js project"
+- "Set up @bsv/simple in my Next.js project"
 - "Generate a payment handler with change recovery"
 - "Create a token system with MessageBox transfer"
 - "Add verifiable credential issuance to my server"

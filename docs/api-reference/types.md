@@ -1,6 +1,6 @@
 # Types
 
-All shared TypeScript interfaces and types used across `@bsv/simplifier`.
+All shared TypeScript interfaces and types used across `@bsv/simple`.
 
 **Source:** `src/core/types.ts`
 

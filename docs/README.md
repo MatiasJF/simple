@@ -1,10 +1,10 @@
-# @bsv/simplifier
+# @bsv/simple
 
 A high-level TypeScript library that makes BSV blockchain development simple. Build wallets, send payments, create tokens, issue credentials, and more — in just a few lines of code.
 
-## What is @bsv/simplifier?
+## What is @bsv/simple?
 
-`@bsv/simplifier` wraps the low-level `@bsv/sdk` into a clean, modular API. Instead of manually constructing locking scripts, managing key derivation, and handling transaction internalization, you call methods like `wallet.pay()`, `wallet.createToken()`, and `wallet.inscribeText()`.
+`@bsv/simple` wraps the low-level `@bsv/sdk` into a clean, modular API. Instead of manually constructing locking scripts, managing key derivation, and handling transaction internalization, you call methods like `wallet.pay()`, `wallet.createToken()`, and `wallet.inscribeText()`.
 
 ## What can you build?
 
@@ -25,15 +25,15 @@ A high-level TypeScript library that makes BSV blockchain development simple. Bu
 
 The library has two entry points:
 
-- **`@bsv/simplifier/browser`** — Uses `WalletClient` from `@bsv/sdk` to connect to the user's browser wallet extension (MetaNet Client). No private keys in the browser.
-- **`@bsv/simplifier/server`** — Uses `@bsv/wallet-toolbox` to run a wallet from a private key on the server. Used for automated operations, payment processing, and funding flows.
+- **`@bsv/simple/browser`** — Uses `WalletClient` from `@bsv/sdk` to connect to the user's browser wallet extension (MetaNet Client). No private keys in the browser.
+- **`@bsv/simple/server`** — Uses `@bsv/wallet-toolbox` to run a wallet from a private key on the server. Used for automated operations, payment processing, and funding flows.
 
 Both entry points provide the same API surface — the only difference is how they connect to the underlying wallet.
 
 ## A taste of the API
 
 ```typescript
-import { createWallet } from '@bsv/simplifier/browser'
+import { createWallet } from '@bsv/simple/browser'
 
 // Connect to the user's wallet
 const wallet = await createWallet()

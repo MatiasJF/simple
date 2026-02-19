@@ -1,6 +1,6 @@
 # DID (Decentralized Identity)
 
-`@bsv/simplifier` supports `did:bsv:` Decentralized Identifiers — W3C-compatible DIDs backed by BSV identity keys.
+`@bsv/simple` supports `did:bsv:` Decentralized Identifiers — W3C-compatible DIDs backed by BSV identity keys.
 
 ## What is a DID?
 
@@ -17,7 +17,7 @@ did:bsv:02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
 ### Generate a DID Document
 
 ```typescript
-import { DID } from '@bsv/simplifier/browser'
+import { DID } from '@bsv/simple/browser'
 
 const doc = DID.fromIdentityKey('02a1b2c3...')
 
@@ -111,7 +111,7 @@ This creates an ephemeral `Certifier` with `certificateType: DID.getCertificateT
 ## Complete Example
 
 ```typescript
-import { createWallet, DID } from '@bsv/simplifier/browser'
+import { createWallet, DID } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 

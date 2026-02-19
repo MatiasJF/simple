@@ -5,7 +5,7 @@ The server wallet runs on Node.js using a private key and `@bsv/wallet-toolbox`.
 ## Creating a Server Wallet
 
 ```typescript
-import { ServerWallet } from '@bsv/simplifier/server'
+import { ServerWallet } from '@bsv/simple/server'
 
 const wallet = await ServerWallet.create({
   privateKey: process.env.SERVER_PRIVATE_KEY!,

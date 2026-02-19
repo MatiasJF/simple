@@ -11,13 +11,13 @@ Get a BSV wallet connected and send your first payment in under 5 minutes.
 ## 1. Install
 
 ```bash
-npm install @bsv/simplifier @bsv/sdk
+npm install @bsv/simple @bsv/sdk
 ```
 
 ## 2. Connect a Wallet
 
 ```typescript
-import { createWallet } from '@bsv/simplifier/browser'
+import { createWallet } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 console.log('Connected:', wallet.getIdentityKey())

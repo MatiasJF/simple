@@ -1,6 +1,6 @@
 # Verifiable Credentials
 
-`@bsv/simplifier` supports W3C Verifiable Credentials backed by BSV `MasterCertificate` cryptography. Credentials can be issued, verified, and revoked on-chain.
+`@bsv/simple` supports W3C Verifiable Credentials backed by BSV `MasterCertificate` cryptography. Credentials can be issued, verified, and revoked on-chain.
 
 ## Overview
 
@@ -16,7 +16,7 @@
 ## Defining a Schema
 
 ```typescript
-import { CredentialSchema } from '@bsv/simplifier/browser'
+import { CredentialSchema } from '@bsv/simple/browser'
 
 const schema = new CredentialSchema({
   id: 'employee-badge',
@@ -75,7 +75,7 @@ const info = schema.getInfo()
 ## Creating an Issuer
 
 ```typescript
-import { CredentialIssuer, MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { CredentialIssuer, MemoryRevocationStore } from '@bsv/simple/browser'
 
 const issuer = await CredentialIssuer.create({
   privateKey: issuerPrivateKeyHex,
@@ -241,7 +241,7 @@ console.log('Credentials:', presentation.verifiableCredential.length)
 For production servers, use `FileRevocationStore` to persist secrets to disk:
 
 ```typescript
-const { FileRevocationStore } = await import('@bsv/simplifier/server')
+const { FileRevocationStore } = await import('@bsv/simple/server')
 
 const issuer = await CredentialIssuer.create({
   privateKey: key,
@@ -259,7 +259,7 @@ const issuer = await CredentialIssuer.create({
 ## Complete Example
 
 ```typescript
-import { createWallet, CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { createWallet, CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 

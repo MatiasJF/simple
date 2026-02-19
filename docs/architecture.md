@@ -73,13 +73,13 @@ Some classes work independently of any wallet:
 
 | Class | Purpose | Import |
 |-------|---------|--------|
-| `DID` | Generate/parse/validate `did:bsv:` identifiers | `@bsv/simplifier/browser` |
-| `Certifier` | Issue BSV certificates | `@bsv/simplifier/browser` |
-| `Overlay` | Create topic broadcasters and lookup resolvers | `@bsv/simplifier/browser` |
-| `CredentialSchema` | Define and validate credential field schemas | `@bsv/simplifier/browser` |
-| `CredentialIssuer` | Issue, verify, and revoke W3C Verifiable Credentials | `@bsv/simplifier/browser` |
-| `MemoryRevocationStore` | In-memory revocation secret storage (browser/tests) | `@bsv/simplifier/browser` |
-| `FileRevocationStore` | File-based revocation secret storage (server only) | `@bsv/simplifier/server` |
+| `DID` | Generate/parse/validate `did:bsv:` identifiers | `@bsv/simple/browser` |
+| `Certifier` | Issue BSV certificates | `@bsv/simple/browser` |
+| `Overlay` | Create topic broadcasters and lookup resolvers | `@bsv/simple/browser` |
+| `CredentialSchema` | Define and validate credential field schemas | `@bsv/simple/browser` |
+| `CredentialIssuer` | Issue, verify, and revoke W3C Verifiable Credentials | `@bsv/simple/browser` |
+| `MemoryRevocationStore` | In-memory revocation secret storage (browser/tests) | `@bsv/simple/browser` |
+| `FileRevocationStore` | File-based revocation secret storage (server only) | `@bsv/simple/server` |
 
 ## Basket System
 

@@ -5,7 +5,7 @@ The browser wallet connects to the user's BSV wallet extension (such as MetaNet 
 ## Connecting
 
 ```typescript
-import { createWallet } from '@bsv/simplifier/browser'
+import { createWallet } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 ```
@@ -76,7 +76,7 @@ This uses protocol ID `[2, '3241645161d8']` internally.
 
 ## Accessing the Underlying Client
 
-For advanced operations that aren't covered by the simplifier API:
+For advanced operations that aren't covered by the simple API:
 
 ```typescript
 const client = wallet.getClient()
@@ -103,6 +103,6 @@ await client.listOutputs({ basket: 'my-basket', include: 'locking scripts' })
 ## Type Reference
 
 ```typescript
-import type { BrowserWallet } from '@bsv/simplifier/browser'
-import type { WalletStatus, WalletInfo, WalletDefaults } from '@bsv/simplifier'
+import type { BrowserWallet } from '@bsv/simple/browser'
+import type { WalletStatus, WalletInfo, WalletDefaults } from '@bsv/simple'
 ```

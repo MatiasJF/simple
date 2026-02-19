@@ -1,6 +1,6 @@
 # Tokens
 
-Tokens in `@bsv/simplifier` are PushDrop outputs with encrypted payloads. They can hold any JSON-serializable data, be transferred between wallets, and be sent peer-to-peer via MessageBox.
+Tokens in `@bsv/simple` are PushDrop outputs with encrypted payloads. They can hold any JSON-serializable data, be transferred between wallets, and be sent peer-to-peer via MessageBox.
 
 ## Creating a Token
 
@@ -118,7 +118,7 @@ await wallet.sendTokenViaMessageBox({
 })
 ```
 
-This creates the token transfer transaction on-chain, then sends the transaction bytes to the recipient via the `simplifier_token_inbox` MessageBox.
+This creates the token transfer transaction on-chain, then sends the transaction bytes to the recipient via the `simple_token_inbox` MessageBox.
 
 ### Receiving Tokens via MessageBox
 
@@ -151,7 +151,7 @@ for (const token of incoming) {
 ## Complete Example
 
 ```typescript
-import { createWallet } from '@bsv/simplifier/browser'
+import { createWallet } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 

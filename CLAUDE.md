@@ -1,13 +1,13 @@
-# @bsv/simplifier v2 — AI Knowledge Base
+# @bsv/simple v2 — AI Knowledge Base
 
 ## 1. Library Architecture
 
-**Package:** `@bsv/simplifier` v0.2.0
+**Package:** `@bsv/simple` v0.2.0
 
 **Entry points:**
-- `@bsv/simplifier` — All exports (browser + server)
-- `@bsv/simplifier/browser` — Browser-only: `createWallet()`, `Wallet`, `Overlay`, `Certifier`, `DID`, `CredentialSchema`, `CredentialIssuer`, `MemoryRevocationStore`
-- `@bsv/simplifier/server` — Server-only: `ServerWallet`, `FileRevocationStore` (plus all browser exports)
+- `@bsv/simple` — All exports (browser + server)
+- `@bsv/simple/browser` — Browser-only: `createWallet()`, `Wallet`, `Overlay`, `Certifier`, `DID`, `CredentialSchema`, `CredentialIssuer`, `MemoryRevocationStore`
+- `@bsv/simple/server` — Server-only: `ServerWallet`, `FileRevocationStore` (plus all browser exports)
 
 **Module composition pattern:** `WalletCore` (abstract base) defines shared methods. `_BrowserWallet` / `_ServerWallet` extend it. Factory functions (`createWallet`, `ServerWallet.create`) instantiate the class then `Object.assign()` mixin methods from each module. The composed type is a union: `_BrowserWallet & TokenMethods & InscriptionMethods & MessageBoxMethods & CertificationMethods & OverlayMethods & DIDMethods & CredentialMethods`.
 
@@ -25,7 +25,7 @@ src/
 ├── core/
 │   ├── WalletCore.ts    — Abstract base: wallet info, key derivation, pay, send, fundServerWallet, reinternalizeChange
 │   ├── types.ts         — All shared TypeScript interfaces
-│   ├── errors.ts        — Error classes: SimplifierError, WalletError, TransactionError, MessageBoxError, CertificationError, DIDError, CredentialError
+│   ├── errors.ts        — Error classes: SimpleError, WalletError, TransactionError, MessageBoxError, CertificationError, DIDError, CredentialError
 │   └── defaults.ts      — DEFAULT_CONFIG, mergeDefaults()
 ├── modules/
 │   ├── tokens.ts        — createTokenMethods(): createToken, listTokenDetails, sendToken, redeemToken, sendTokenViaMessageBox, listIncomingTokens, acceptIncomingToken
@@ -55,7 +55,7 @@ src/
 
 5. **BRC-29 Payment Derivation Protocol ID:** `[2, '3241645161d8']`
 
-6. **FileRevocationStore is server-only** — It's in a separate file (`file-revocation-store.ts`) to avoid bundling Node.js `fs` in browser builds. Import from `@bsv/simplifier/server` or `@bsv/simplifier`.
+6. **FileRevocationStore is server-only** — It's in a separate file (`file-revocation-store.ts`) to avoid bundling Node.js `fs` in browser builds. Import from `@bsv/simple/server` or `@bsv/simple`.
 
 7. **Overlay topics must start with `tm_`**, lookup services must start with `ls_`** — The Overlay class enforces these prefixes and throws if violated.
 
@@ -72,7 +72,7 @@ src/
 ### Initialization
 
 ```typescript
-import { createWallet } from '@bsv/simplifier/browser'
+import { createWallet } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 // Optional: pass defaults
@@ -173,7 +173,7 @@ const wallet = await createWallet({ changeBasket: 'my-change', network: 'main' }
 
 ```typescript
 // In a Next.js API route (server-only):
-const { ServerWallet } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
 
 const wallet = await ServerWallet.create({
   privateKey: 'hex_private_key',
@@ -200,7 +200,7 @@ ServerWallet has all the same methods as BrowserWallet (pay, send, createToken, 
 ### DID
 
 ```typescript
-import { DID } from '@bsv/simplifier/browser'
+import { DID } from '@bsv/simple/browser'
 
 DID.fromIdentityKey('02abc...')   // → DIDDocument
 DID.parse('did:bsv:02abc...')     // → { method: 'bsv', identityKey: '02abc...' }
@@ -211,7 +211,7 @@ DID.getCertificateType()          // → base64 string for 'did:bsv'
 ### Certifier
 
 ```typescript
-import { Certifier } from '@bsv/simplifier/browser'
+import { Certifier } from '@bsv/simple/browser'
 
 const certifier = await Certifier.create()                     // random key
 const certifier = await Certifier.create({ privateKey: 'hex' }) // specific key
@@ -229,7 +229,7 @@ await certifier.certify(wallet, { extra: 'field' })  // → CertificateData (als
 ### CredentialSchema
 
 ```typescript
-import { CredentialSchema } from '@bsv/simplifier/browser'
+import { CredentialSchema } from '@bsv/simple/browser'
 
 const schema = new CredentialSchema({
   id: 'my-schema',
@@ -252,7 +252,7 @@ schema.getInfo()  // → { id, name, description, certificateTypeBase64, fieldCo
 ### CredentialIssuer
 
 ```typescript
-import { CredentialIssuer } from '@bsv/simplifier/browser'
+import { CredentialIssuer } from '@bsv/simple/browser'
 
 const issuer = await CredentialIssuer.create({
   privateKey: 'hex_key',
@@ -274,8 +274,8 @@ issuer.getInfo()                             // → { publicKey, did, schemas: [
 ### MemoryRevocationStore / FileRevocationStore
 
 ```typescript
-import { MemoryRevocationStore } from '@bsv/simplifier/browser'
-import { FileRevocationStore } from '@bsv/simplifier/server'
+import { MemoryRevocationStore } from '@bsv/simple/browser'
+import { FileRevocationStore } from '@bsv/simple/server'
 
 // Memory (browser/tests)
 const store = new MemoryRevocationStore()
@@ -295,7 +295,7 @@ await store.findByOutpoint(outpoint)  // → boolean
 ### Overlay
 
 ```typescript
-import { Overlay } from '@bsv/simplifier/browser'
+import { Overlay } from '@bsv/simple/browser'
 
 const overlay = await Overlay.create({
   topics: ['tm_my_topic'],
@@ -319,7 +319,7 @@ overlay.getResolver()                     // raw LookupResolver
 ### W3C VC/VP Utilities
 
 ```typescript
-import { toVerifiableCredential, toVerifiablePresentation } from '@bsv/simplifier/browser'
+import { toVerifiableCredential, toVerifiablePresentation } from '@bsv/simple/browser'
 
 const vc = toVerifiableCredential(certData, issuerPublicKey, { credentialType: 'MyCredential' })
 const vp = toVerifiablePresentation([vc1, vc2], holderPublicKey)
@@ -334,12 +334,12 @@ const vp = toVerifiablePresentation([vc1, vc2], holderPublicKey)
 ```typescript
 // Browser components (client-side):
 'use client'
-import { createWallet, Certifier, DID, Overlay } from '@bsv/simplifier/browser'
-import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { createWallet, Certifier, DID, Overlay } from '@bsv/simple/browser'
+import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simple/browser'
 
 // Server API routes:
-const { ServerWallet } = await import('@bsv/simplifier/server')
-const { FileRevocationStore } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
+const { FileRevocationStore } = await import('@bsv/simple/server')
 ```
 
 ### next.config.ts (CRITICAL for Turbopack)
@@ -372,7 +372,7 @@ Without `serverExternalPackages`, Turbopack will try to bundle `@bsv/wallet-tool
 ```typescript
 'use client'
 import { useState, useEffect } from 'react'
-import { createWallet, type BrowserWallet } from '@bsv/simplifier/browser'
+import { createWallet, type BrowserWallet } from '@bsv/simple/browser'
 
 export default function Page() {
   const [wallet, setWallet] = useState<BrowserWallet | null>(null)
@@ -400,7 +400,7 @@ async function getServerWallet() {
   if (initPromise) return initPromise
 
   initPromise = (async () => {
-    const { ServerWallet } = await import('@bsv/simplifier/server')
+    const { ServerWallet } = await import('@bsv/simple/server')
     const privateKey = process.env.SERVER_PRIVATE_KEY || 'generated_hex'
 
     serverWallet = await ServerWallet.create({
@@ -538,7 +538,7 @@ await wallet.acceptIncomingPayment(incoming[0], 'received-payments')
 
 ```typescript
 // Server side: create wallet
-const { ServerWallet } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
 const server = await ServerWallet.create({ privateKey: 'hex', network: 'main' })
 
 // Server: generate payment request
@@ -566,7 +566,7 @@ await server.receivePayment({ tx, senderIdentityKey, derivationPrefix, derivatio
 ### 7.9 DID: Get, Register, Resolve
 
 ```typescript
-import { DID } from '@bsv/simplifier/browser'
+import { DID } from '@bsv/simple/browser'
 
 // Get DID document for this wallet
 const didDoc = wallet.getDID()
@@ -586,7 +586,7 @@ DID.parse('did:bsv:02abc...')    // { method: 'bsv', identityKey: '02abc...' }
 ### 7.10 Credentials: Issue VC, List VCs, Create Presentation
 
 ```typescript
-import { CredentialIssuer, CredentialSchema, MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { CredentialIssuer, CredentialSchema, MemoryRevocationStore } from '@bsv/simple/browser'
 
 // Define schema
 const schema = new CredentialSchema({
@@ -621,7 +621,7 @@ const vp = wallet.createPresentation(vcs)
 ### 7.11 Overlay: Create, Query, Advertise SHIP/SLAP
 
 ```typescript
-import { Overlay } from '@bsv/simplifier/browser'
+import { Overlay } from '@bsv/simple/browser'
 
 const overlay = await Overlay.create({ topics: ['tm_payments'], network: 'mainnet' })
 
@@ -726,7 +726,7 @@ interface OverlayOutput { beef: number[]; outputIndex: number; context?: number[
 ### Error Classes
 
 ```typescript
-SimplifierError          // base (code?: string)
+SimpleError          // base (code?: string)
 ├── WalletError          // WALLET_ERROR
 ├── TransactionError     // TRANSACTION_ERROR
 ├── MessageBoxError      // MESSAGEBOX_ERROR

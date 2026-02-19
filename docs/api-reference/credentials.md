@@ -185,7 +185,7 @@ getInfo(): {
 In-memory storage for browser and tests.
 
 ```typescript
-import { MemoryRevocationStore } from '@bsv/simplifier/browser'
+import { MemoryRevocationStore } from '@bsv/simple/browser'
 const store = new MemoryRevocationStore()
 ```
 
@@ -194,7 +194,7 @@ const store = new MemoryRevocationStore()
 File-based storage for Node.js servers.
 
 ```typescript
-const { FileRevocationStore } = await import('@bsv/simplifier/server')
+const { FileRevocationStore } = await import('@bsv/simple/server')
 const store = new FileRevocationStore()                        // default: .revocation-secrets.json
 const store = new FileRevocationStore('/path/to/secrets.json') // custom path
 ```

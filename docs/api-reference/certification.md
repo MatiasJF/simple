@@ -29,7 +29,7 @@ Create a new certifier instance.
 **Example:**
 
 ```typescript
-import { Certifier } from '@bsv/simplifier/browser'
+import { Certifier } from '@bsv/simple/browser'
 
 // Random key (ephemeral certifier)
 const certifier = await Certifier.create()

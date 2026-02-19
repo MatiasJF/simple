@@ -7,7 +7,7 @@
 **Import:**
 
 ```typescript
-import { createWallet, type BrowserWallet } from '@bsv/simplifier/browser'
+import { createWallet, type BrowserWallet } from '@bsv/simple/browser'
 ```
 
 ## Type Definition
@@ -70,7 +70,7 @@ const wallet = await createWallet({
 | [Credentials](credentials.md) | `acquireCredential()`, `listCredentials()`, `createPresentation()` |
 | [Overlay](overlay.md) | `advertiseSHIP()`, `advertiseSLAP()`, `broadcastAction()`, `withRetry()` |
 
-## Re-exports from `@bsv/simplifier/browser`
+## Re-exports from `@bsv/simple/browser`
 
 The browser entry point also re-exports these standalone classes:
 

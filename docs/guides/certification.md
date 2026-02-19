@@ -9,7 +9,7 @@ BSV certificates are cryptographic attestations that a certifier makes about a s
 ### Creating a Certifier
 
 ```typescript
-import { Certifier } from '@bsv/simplifier/browser'
+import { Certifier } from '@bsv/simple/browser'
 
 // Random key (ephemeral certifier)
 const certifier = await Certifier.create()
@@ -128,7 +128,7 @@ This removes the certificate from the wallet. For on-chain revocation of Verifia
 ## Complete Example
 
 ```typescript
-import { createWallet, Certifier } from '@bsv/simplifier/browser'
+import { createWallet, Certifier } from '@bsv/simple/browser'
 
 const wallet = await createWallet()
 

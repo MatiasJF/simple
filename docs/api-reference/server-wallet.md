@@ -8,10 +8,10 @@
 
 ```typescript
 // In Next.js API routes, always use dynamic import:
-const { ServerWallet } = await import('@bsv/simplifier/server')
+const { ServerWallet } = await import('@bsv/simple/server')
 
 // In standalone Node.js scripts:
-import { ServerWallet } from '@bsv/simplifier/server'
+import { ServerWallet } from '@bsv/simple/server'
 ```
 
 > **Important:** In Next.js, use `await import()` instead of static `import` at the top of the file. Static imports cause Turbopack bundling issues.
