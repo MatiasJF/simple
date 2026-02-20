@@ -20,6 +20,10 @@ export interface WalletDefaults {
   tokenKeyID: string
   messageBoxHost: string
   registryUrl?: string
+  didBasket: string
+  didResolverUrl: string
+  didProxyUrl?: string
+  didProtocolID: [SecurityLevel, string]
 }
 
 // ============================================================================
@@ -275,7 +279,7 @@ export interface IncomingPayment {
 }
 
 // ============================================================================
-// DID Types
+// DID Types (Legacy — kept for backward compatibility)
 // ============================================================================
 
 export interface DIDDocument {
@@ -296,7 +300,81 @@ export interface DIDVerificationMethod {
 
 export interface DIDParseResult {
   method: string
-  identityKey: string
+  identifier: string
+}
+
+// ============================================================================
+// DID Types V2 (did:bsv spec-compliant — Teranode/nChain)
+// ============================================================================
+
+export interface DIDDocumentV2 {
+  '@context': string | string[]
+  id: string
+  controller?: string
+  verificationMethod: DIDVerificationMethodV2[]
+  authentication: (string | DIDVerificationMethodV2)[]
+  assertionMethod?: (string | DIDVerificationMethodV2)[]
+  service?: DIDService[]
+}
+
+export interface DIDVerificationMethodV2 {
+  id: string
+  type: string
+  controller: string
+  publicKeyJwk: { kty: string; crv: string; x: string; y: string }
+}
+
+export interface DIDService {
+  id: string
+  type: string
+  serviceEndpoint: string
+}
+
+export interface DIDCreateOptions {
+  identityCode?: string
+  satoshis?: number
+  basket?: string
+  controllerKey?: string
+  services?: DIDService[]
+}
+
+export interface DIDCreateResult {
+  did: string
+  txid: string
+  identityCode: string
+  document: DIDDocumentV2
+}
+
+export interface DIDResolutionResult {
+  didDocument: DIDDocumentV2 | null
+  didDocumentMetadata: {
+    created?: string
+    updated?: string
+    deactivated?: boolean
+    versionId?: string
+    nextVersionId?: string
+  }
+  didResolutionMetadata: {
+    contentType?: string
+    error?: string
+    message?: string
+  }
+}
+
+export interface DIDChainState {
+  did: string
+  identityCode: string
+  issuanceTxid: string
+  currentOutpoint: string
+  status: 'active' | 'deactivated'
+  created: string
+  updated: string
+}
+
+export interface DIDUpdateOptions {
+  did: string
+  services?: DIDService[]
+  additionalKeys?: string[]
 }
 
 // ============================================================================

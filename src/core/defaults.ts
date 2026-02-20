@@ -11,6 +11,9 @@ export const DEFAULT_CONFIG: WalletDefaults = {
   tokenKeyID: '1',
   messageBoxHost: 'https://messagebox.babbage.systems',
   registryUrl: undefined,
+  didBasket: 'did-chain',
+  didResolverUrl: 'https://bsvdid-universal-resolver.nchain.systems',
+  didProtocolID: [0 as SecurityLevel, 'bsvdid'],
 }
 
 export function mergeDefaults(partial: Partial<WalletDefaults>): WalletDefaults {
