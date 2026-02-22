@@ -481,7 +481,7 @@ export function createCredentialMethods(core: WalletCore) {
         const client = core.getClient()
 
         // Fetch issuer info
-        const infoRes = await fetch(`${config.serverUrl}/api/info`)
+        const infoRes = await fetch(`${config.serverUrl}?action=info`)
         if (!infoRes.ok) throw new Error(`Server returned ${infoRes.status}`)
         const info = await infoRes.json() as {
           certifierPublicKey: string
@@ -510,7 +510,7 @@ export function createCredentialMethods(core: WalletCore) {
         }
 
         // Request certificate
-        const certRes = await fetch(`${config.serverUrl}/api/certify`, {
+        const certRes = await fetch(`${config.serverUrl}?action=certify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

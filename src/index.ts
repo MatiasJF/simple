@@ -13,7 +13,24 @@ export {
 } from './modules/credentials'
 
 // Server-only exports
-export { ServerWallet } from './server'
+export {
+  ServerWallet,
+  generatePrivateKey,
+  // Handler utilities
+  JsonFileStore,
+  toNextHandlers,
+  // Identity Registry
+  IdentityRegistry,
+  createIdentityRegistryHandler,
+  // DID Resolver
+  DIDResolverService,
+  createDIDResolverHandler,
+  // Server Wallet Manager
+  ServerWalletManager,
+  createServerWalletHandler,
+  // Credential Issuer Handler
+  createCredentialIssuerHandler
+} from './server'
 export { FileRevocationStore } from './modules/file-revocation-store'
 
 // Types
@@ -69,7 +86,13 @@ export type {
   VerificationResult,
   CredentialIssuerConfig,
   RevocationRecord,
-  RevocationStore
+  RevocationStore,
+  RegistryEntry,
+  IdentityRegistryStore,
+  IdentityRegistryConfig,
+  DIDResolverConfig,
+  ServerWalletManagerConfig,
+  CredentialIssuerHandlerConfig
 } from './core/types'
 
 // Errors

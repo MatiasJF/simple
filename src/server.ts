@@ -29,6 +29,42 @@ import { createDIDMethods } from './modules/did'
 import { createCredentialMethods } from './modules/credentials'
 
 // ============================================================================
+// Utility: generate a random private key hex without exposing @bsv/sdk
+// ============================================================================
+
+export function generatePrivateKey(): string {
+  return PrivateKey.fromRandom().toHex()
+}
+
+// ============================================================================
+// Re-export server handler utilities
+// ============================================================================
+
+export {
+  // Handler types & utilities
+  HandlerRequest,
+  HandlerResponse,
+  RouteHandler,
+  getSearchParams,
+  jsonResponse,
+  toNextHandlers,
+  // File persistence
+  JsonFileStore,
+  // Identity Registry
+  IdentityRegistry,
+  RegistryResult,
+  createIdentityRegistryHandler,
+  // DID Resolver
+  DIDResolverService,
+  createDIDResolverHandler,
+  // Server Wallet Manager
+  ServerWalletManager,
+  createServerWalletHandler,
+  // Credential Issuer Handler
+  createCredentialIssuerHandler
+} from './server/index'
+
+// ============================================================================
 // _ServerWallet extends WalletCore with wallet-toolbox
 // ============================================================================
 

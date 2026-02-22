@@ -488,3 +488,48 @@ export interface RevocationStore {
   has(serialNumber: string): Promise<boolean>
   findByOutpoint(outpoint: string): Promise<boolean>
 }
+
+// ============================================================================
+// Server Handler Config Types
+// ============================================================================
+
+export interface RegistryEntry {
+  tag: string
+  identityKey: string
+  createdAt: string
+}
+
+export interface IdentityRegistryStore {
+  load(): RegistryEntry[]
+  save(entries: RegistryEntry[]): void
+}
+
+export interface IdentityRegistryConfig {
+  store?: IdentityRegistryStore
+  validateTag?: (tag: string, identityKey: string) => string | null
+  maxTagsPerIdentity?: number
+}
+
+export interface DIDResolverConfig {
+  resolverUrl?: string
+  wocBaseUrl?: string
+  resolverTimeout?: number
+  maxHops?: number
+}
+
+export interface ServerWalletManagerConfig {
+  envVar?: string
+  keyFile?: string
+  network?: Network
+  storageUrl?: string
+  defaultRequestSatoshis?: number
+  requestMemo?: string
+}
+
+export interface CredentialIssuerHandlerConfig {
+  schemas: CredentialSchemaConfig[]
+  envVar?: string
+  keyFile?: string
+  serverWalletManager?: any
+  revocationStorePath?: string
+}

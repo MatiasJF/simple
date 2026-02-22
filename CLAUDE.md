@@ -7,11 +7,11 @@
 **Entry points:**
 - `@bsv/simple` — All exports (browser + server)
 - `@bsv/simple/browser` — Browser-only: `createWallet()`, `Wallet`, `Overlay`, `Certifier`, `DID`, `CredentialSchema`, `CredentialIssuer`, `MemoryRevocationStore`
-- `@bsv/simple/server` — Server-only: `ServerWallet`, `FileRevocationStore` (plus all browser exports)
+- `@bsv/simple/server` — Server-only: `ServerWallet`, `FileRevocationStore`, `generatePrivateKey()`, handler factories (`createIdentityRegistryHandler`, `createDIDResolverHandler`, `createServerWalletHandler`, `createCredentialIssuerHandler`), utility classes (`JsonFileStore`, `IdentityRegistry`, `DIDResolverService`, `ServerWalletManager`)
 
 **Module composition pattern:** `WalletCore` (abstract base) defines shared methods. `_BrowserWallet` / `_ServerWallet` extend it. Factory functions (`createWallet`, `ServerWallet.create`) instantiate the class then `Object.assign()` mixin methods from each module. The composed type is a union: `_BrowserWallet & TokenMethods & InscriptionMethods & MessageBoxMethods & CertificationMethods & OverlayMethods & DIDMethods & CredentialMethods`.
 
-**Build:** `cd simple && npm run build` (runs `tsc`)
+**Build:** `cd simplifier-v2 && npm run build` (runs `tsc`)
 
 **Dependencies:**
 - `@bsv/sdk` ^1.10.1 — Core BSV blockchain SDK
@@ -24,7 +24,7 @@
 src/
 ├── core/
 │   ├── WalletCore.ts    — Abstract base: wallet info, key derivation, pay, send, fundServerWallet, reinternalizeChange
-│   ├── types.ts         — All shared TypeScript interfaces
+│   ├── types.ts         — All shared TypeScript interfaces (including server handler config types)
 │   ├── errors.ts        — Error classes: SimpleError, WalletError, TransactionError, MessageBoxError, CertificationError, DIDError, CredentialError
 │   └── defaults.ts      — DEFAULT_CONFIG, mergeDefaults()
 ├── modules/
@@ -36,8 +36,16 @@ src/
 │   ├── did.ts           — DID class + createDIDMethods(): getDID, resolveDID, registerDID
 │   ├── credentials.ts   — CredentialSchema, CredentialIssuer, MemoryRevocationStore, toVerifiableCredential, toVerifiablePresentation + createCredentialMethods(): acquireCredential, listCredentials, createPresentation
 │   └── file-revocation-store.ts — FileRevocationStore (Node.js only, uses fs)
+├── server/
+│   ├── handler-types.ts           — HandlerRequest, HandlerResponse, toNextHandlers() (framework-agnostic)
+│   ├── json-file-store.ts         — JsonFileStore<T> generic file persistence
+│   ├── identity-registry.ts       — IdentityRegistry class + createIdentityRegistryHandler()
+│   ├── did-resolver.ts            — DIDResolverService class + createDIDResolverHandler()
+│   ├── server-wallet-manager.ts   — ServerWalletManager class + createServerWalletHandler()
+│   ├── credential-issuer-handler.ts — createCredentialIssuerHandler()
+│   └── index.ts                   — Re-exports all server/ utilities
 ├── browser.ts           — BrowserWallet type + createWallet() factory + re-exports
-├── server.ts            — ServerWallet type + ServerWallet.create() factory
+├── server.ts            — ServerWallet type + ServerWallet.create() factory + generatePrivateKey() + re-exports from server/
 └── index.ts             — All exports
 ```
 
@@ -145,7 +153,7 @@ const wallet = await createWallet({ changeBasket: 'my-change', network: 'main' }
 
 | Method | Params | Returns | Description |
 |--------|--------|---------|-------------|
-| `acquireCertificateFrom(config)` | `{ serverUrl, replaceExisting? }` | `Promise<CertificateData>` | Acquire certificate from remote server |
+| `acquireCertificateFrom(config)` | `{ serverUrl, replaceExisting? }` | `Promise<CertificateData>` | Acquire certificate from remote server (uses `?action=info` and `?action=certify` query params) |
 | `listCertificatesFrom(config)` | `{ certifiers, types, limit? }` | `Promise<{ totalCertificates, certificates }>` | List certificates by certifier/type |
 | `relinquishCert(args)` | `{ type, serialNumber, certifier }` | `Promise<void>` | Revoke/relinquish a certificate |
 
@@ -327,7 +335,183 @@ const vp = toVerifiablePresentation([vc1, vc2], holderPublicKey)
 
 ---
 
-## 6. Next.js Integration Guide
+## 6. Server Handler Factories
+
+Pre-built Next.js API route handlers that eliminate boilerplate. Each factory returns `{ GET, POST }` compatible with Next.js App Router. No `@bsv/sdk` import needed in consumer code.
+
+### generatePrivateKey()
+
+```typescript
+import { generatePrivateKey } from '@bsv/simple/server'
+const key = generatePrivateKey()  // random hex private key, no @bsv/sdk needed
+```
+
+### JsonFileStore\<T\>
+
+Generic file-based JSON persistence used by all handlers internally. Also available for custom use.
+
+```typescript
+import { JsonFileStore } from '@bsv/simple/server'
+const store = new JsonFileStore<{ name: string }>('/path/to/data.json')
+store.save({ name: 'Alice' })
+const data = store.load()  // { name: 'Alice' } | null
+store.exists()             // boolean
+store.delete()
+```
+
+### createIdentityRegistryHandler(config?)
+
+Identity tag/handle registry for MessageBox. Replaces ~150 lines of route code with 3 lines.
+
+```typescript
+// app/api/identity-registry/route.ts
+import { createIdentityRegistryHandler } from '@bsv/simple/server'
+const handler = createIdentityRegistryHandler()
+export const GET = handler.GET, POST = handler.POST
+```
+
+**Config options:**
+```typescript
+interface IdentityRegistryConfig {
+  store?: IdentityRegistryStore    // Custom backend (default: file-based .identity-registry.json)
+  validateTag?: (tag: string, identityKey: string) => string | null  // Custom validation
+  maxTagsPerIdentity?: number      // Default: Infinity
+}
+```
+
+**API contract** (matches what `messagebox.ts` already calls):
+- `GET ?action=lookup&query=...` → `{ success, results: [{ tag, identityKey }] }`
+- `GET ?action=list&identityKey=...` → `{ success, tags: [{ tag, createdAt }] }`
+- `POST ?action=register` body: `{ tag, identityKey }` → `{ success, message, tag }`
+- `POST ?action=revoke` body: `{ tag, identityKey }` → `{ success, message, tag }`
+
+### createDIDResolverHandler(config?)
+
+Server-side DID resolution proxy. Replaces ~322 lines of OP_RETURN parsing + WoC chain-following.
+
+```typescript
+// app/api/resolve-did/route.ts
+import { createDIDResolverHandler } from '@bsv/simple/server'
+const handler = createDIDResolverHandler()
+export const GET = handler.GET
+```
+
+**Config options:**
+```typescript
+interface DIDResolverConfig {
+  resolverUrl?: string       // Default: nChain Universal Resolver
+  wocBaseUrl?: string        // Default: WoC mainnet API
+  resolverTimeout?: number   // Default: 10000ms
+  maxHops?: number           // Default: 100
+}
+```
+
+**API:** `GET ?did=did:bsv:<txid>` → `DIDResolutionResult`
+
+### createServerWalletHandler(config?)
+
+Server wallet with lazy-init singleton + key persistence. Replaces ~105 lines of boilerplate.
+
+```typescript
+// app/api/server-wallet/route.ts
+import { createServerWalletHandler } from '@bsv/simple/server'
+const handler = createServerWalletHandler()
+export const GET = handler.GET, POST = handler.POST
+```
+
+**Config options:**
+```typescript
+interface ServerWalletManagerConfig {
+  envVar?: string               // Default: 'SERVER_PRIVATE_KEY'
+  keyFile?: string              // Default: '.server-wallet.json' in cwd
+  network?: 'main' | 'testnet'
+  storageUrl?: string           // Default: 'https://storage.babbage.systems'
+  defaultRequestSatoshis?: number  // Default: 1000
+  requestMemo?: string
+}
+```
+
+**API:**
+- `GET ?action=create|status|request|balance|outputs|reset`
+- `POST ?action=receive` body: `{ tx, senderIdentityKey, derivationPrefix, derivationSuffix, outputIndex }`
+
+### createCredentialIssuerHandler(config)
+
+W3C Verifiable Credential issuer. Replaces ~220 lines + `[[...path]]` catch-all route. Uses a normal `route.ts`.
+
+```typescript
+// app/api/credential-issuer/route.ts  (no [[...path]] needed!)
+import { createCredentialIssuerHandler } from '@bsv/simple/server'
+const handler = createCredentialIssuerHandler({
+  schemas: [{
+    id: 'freelancer-verified',
+    name: 'VerifiedFreelancer',
+    fields: [
+      { key: 'name', label: 'Full Name', type: 'text', required: true },
+      { key: 'skill', label: 'Primary Skill', type: 'select', required: true },
+      { key: 'rate', label: 'Hourly Rate', type: 'number', required: true },
+    ]
+  }]
+})
+export const GET = handler.GET, POST = handler.POST
+```
+
+**Config options:**
+```typescript
+interface CredentialIssuerHandlerConfig {
+  schemas: CredentialSchemaConfig[]   // Required: at least one schema
+  envVar?: string                     // Default: 'CREDENTIAL_ISSUER_KEY'
+  keyFile?: string                    // Default: '.credential-issuer-key.json'
+  serverWalletManager?: ServerWalletManager  // For revocation UTXOs
+  revocationStorePath?: string
+}
+```
+
+**API (query-param based):**
+- `GET ?action=info` → `{ certifierPublicKey, certificateType, schemas }`
+- `GET ?action=schema&id=...` → schema details
+- `GET ?action=status&serialNumber=...` → revocation status
+- `POST ?action=certify` body: `{ identityKey, schemaId, fields }` → `CertificateData`
+- `POST ?action=issue` body: `{ subjectKey, schemaId, fields }` → `{ credential: VerifiableCredential }`
+- `POST ?action=verify` body: `{ credential }` → `{ verification: VerificationResult }`
+- `POST ?action=revoke` body: `{ serialNumber }` → `{ txid }`
+
+Also supports legacy path-based `/api/info` and `/api/certify` for backward compatibility.
+
+### IdentityRegistry (core class)
+
+Framework-agnostic registry logic, usable outside Next.js:
+
+```typescript
+import { IdentityRegistry } from '@bsv/simple/server'
+const registry = new IdentityRegistry()
+registry.register('alice', identityKey)
+registry.lookup('ali')    // [{ tag: 'alice', identityKey: '...' }]
+registry.list(identityKey) // [{ tag: 'alice', createdAt: '...' }]
+registry.revoke('alice', identityKey)
+```
+
+### DIDResolverService (core class)
+
+```typescript
+import { DIDResolverService } from '@bsv/simple/server'
+const resolver = new DIDResolverService()
+const result = await resolver.resolve('did:bsv:<txid>')
+```
+
+### ServerWalletManager (core class)
+
+```typescript
+import { ServerWalletManager } from '@bsv/simple/server'
+const manager = new ServerWalletManager()
+const wallet = await manager.getWallet()   // lazy init + key persist
+manager.getStatus()  // { saved: boolean, identityKey: string | null }
+manager.reset()
+```
+
+---
+
+## 7. Next.js Integration Guide
 
 ### Import Patterns
 
@@ -337,8 +521,14 @@ const vp = toVerifiablePresentation([vc1, vc2], holderPublicKey)
 import { createWallet, Certifier, DID, Overlay } from '@bsv/simple/browser'
 import { CredentialSchema, CredentialIssuer, MemoryRevocationStore } from '@bsv/simple/browser'
 
-// Server API routes:
-const { ServerWallet } = await import('@bsv/simple/server')
+// Server API routes (handler factories — preferred):
+import { createIdentityRegistryHandler } from '@bsv/simple/server'
+import { createDIDResolverHandler } from '@bsv/simple/server'
+import { createServerWalletHandler } from '@bsv/simple/server'
+import { createCredentialIssuerHandler } from '@bsv/simple/server'
+
+// Server utilities (when you need lower-level access):
+const { ServerWallet, generatePrivateKey } = await import('@bsv/simple/server')
 const { FileRevocationStore } = await import('@bsv/simple/server')
 ```
 
@@ -386,50 +576,46 @@ export default function Page() {
 }
 ```
 
-### Server Wallet in API Route
+### Server API Routes (Simplified)
+
+All server routes use handler factories — no boilerplate needed:
 
 ```typescript
+// app/api/identity-registry/route.ts
+import { createIdentityRegistryHandler } from '@bsv/simple/server'
+const handler = createIdentityRegistryHandler()
+export const GET = handler.GET, POST = handler.POST
+
+// app/api/resolve-did/route.ts
+import { createDIDResolverHandler } from '@bsv/simple/server'
+const handler = createDIDResolverHandler()
+export const GET = handler.GET
+
 // app/api/server-wallet/route.ts
-import { NextRequest, NextResponse } from 'next/server'
+import { createServerWalletHandler } from '@bsv/simple/server'
+const handler = createServerWalletHandler()
+export const GET = handler.GET, POST = handler.POST
 
-let serverWallet: any = null
-let initPromise: Promise<any> | null = null
-
-async function getServerWallet() {
-  if (serverWallet) return serverWallet
-  if (initPromise) return initPromise
-
-  initPromise = (async () => {
-    const { ServerWallet } = await import('@bsv/simple/server')
-    const privateKey = process.env.SERVER_PRIVATE_KEY || 'generated_hex'
-
-    serverWallet = await ServerWallet.create({
-      privateKey,
-      network: 'main',
-      storageUrl: 'https://storage.babbage.systems'
-    })
-    return serverWallet
-  })()
-
-  return initPromise
-}
-
-export async function GET(req: NextRequest) {
-  const wallet = await getServerWallet()
-  return NextResponse.json({ identityKey: wallet.getIdentityKey() })
-}
+// app/api/credential-issuer/route.ts  (no [[...path]] needed!)
+import { createCredentialIssuerHandler } from '@bsv/simple/server'
+const handler = createCredentialIssuerHandler({
+  schemas: [{ id: 'my-credential', name: 'MyCredential', fields: [...] }]
+})
+export const GET = handler.GET, POST = handler.POST
 ```
 
 ### Key Persistence Pattern
 
-Server wallet private keys should persist across restarts. Pattern:
+Server wallet private keys persist automatically via `ServerWalletManager`:
 1. Check `process.env.SERVER_PRIVATE_KEY`
 2. If not set, check `.server-wallet.json` file
-3. If not found, generate `PrivateKey.fromRandom().toHex()` and save to file
+3. If not found, generate key via `generatePrivateKey()` and save to file
+
+No `@bsv/sdk` import needed — use `generatePrivateKey()` from `@bsv/simple/server`.
 
 ---
 
-## 7. Code Recipes
+## 8. Code Recipes
 
 ### 7.1 Connect Wallet + Auto-check MessageBox Handle
 
@@ -640,7 +826,7 @@ const results = await overlay.lookupOutputs('ls_payments', { tag: 'recent' })
 
 ---
 
-## 8. Type Reference
+## 9. Type Reference
 
 ### Core Types
 
@@ -721,6 +907,17 @@ interface RevocationStore { save(sn, record): Promise<void>; load(sn): Promise<R
 interface OverlayConfig { topics: string[]; network?: 'mainnet' | 'testnet' | 'local'; slapTrackers?: string[]; hostOverrides?: Record<string, string[]>; additionalHosts?: Record<string, string[]> }
 interface OverlayBroadcastResult { success: boolean; txid?: string; code?: string; description?: string }
 interface OverlayOutput { beef: number[]; outputIndex: number; context?: number[] }
+```
+
+### Server Handler Config Types
+
+```typescript
+interface IdentityRegistryConfig { store?: IdentityRegistryStore; validateTag?: (tag: string, identityKey: string) => string | null; maxTagsPerIdentity?: number }
+interface IdentityRegistryStore { load(): RegistryEntry[]; save(entries: RegistryEntry[]): void }
+interface RegistryEntry { tag: string; identityKey: string; createdAt: string }
+interface DIDResolverConfig { resolverUrl?: string; wocBaseUrl?: string; resolverTimeout?: number; maxHops?: number }
+interface ServerWalletManagerConfig { envVar?: string; keyFile?: string; network?: Network; storageUrl?: string; defaultRequestSatoshis?: number; requestMemo?: string }
+interface CredentialIssuerHandlerConfig { schemas: CredentialSchemaConfig[]; envVar?: string; keyFile?: string; serverWalletManager?: any; revocationStorePath?: string }
 ```
 
 ### Error Classes
