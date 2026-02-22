@@ -194,11 +194,10 @@ export abstract class WalletCore {
       })
 
       let reinternalized: ReinternalizeResult | undefined
-      const changeBasket = options.changeBasket ?? this.defaults.changeBasket
-      if (changeBasket) {
+      if (options.changeBasket) {
         if (result.tx) {
           const skipIndexes = actionOutputs.map((_: any, i: number) => i)
-          reinternalized = await this.reinternalizeChange(result.tx, changeBasket, skipIndexes)
+          reinternalized = await this.reinternalizeChange(result.tx, options.changeBasket, skipIndexes)
         } else {
           reinternalized = { count: 0, errors: ['result.tx is missing from createAction response'] }
         }
@@ -262,11 +261,10 @@ export abstract class WalletCore {
       })
 
       let reinternalized: ReinternalizeResult | undefined
-      const changeBasket = options.changeBasket ?? this.defaults.changeBasket
-      if (changeBasket) {
+      if (options.changeBasket) {
         if (result.tx) {
           const skipIndexes = outputs.map((_: any, i: number) => i)
-          reinternalized = await this.reinternalizeChange(result.tx, changeBasket, skipIndexes)
+          reinternalized = await this.reinternalizeChange(result.tx, options.changeBasket, skipIndexes)
         } else {
           reinternalized = { count: 0, errors: ['result.tx is missing from createAction response'] }
         }
@@ -334,11 +332,10 @@ export abstract class WalletCore {
       })
 
       let reinternalized: ReinternalizeResult | undefined
-      const effectiveChangeBasket = changeBasket ?? this.defaults.changeBasket
-      if (effectiveChangeBasket) {
+      if (changeBasket) {
         if (result.tx) {
           const skipIndexes = outputs.map((_: any, i: number) => i)
-          reinternalized = await this.reinternalizeChange(result.tx, effectiveChangeBasket, skipIndexes)
+          reinternalized = await this.reinternalizeChange(result.tx, changeBasket, skipIndexes)
         } else {
           reinternalized = { count: 0, errors: ['result.tx is missing from createAction response'] }
         }
